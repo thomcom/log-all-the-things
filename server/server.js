@@ -1,9 +1,12 @@
-
 /**************************************
  * Express Setup
   *************************************/
+const cors = require('cors');
 const express = require('express');
+const ws = require('ws');
 const app = express();
+app.use(cors());
+
 
 /**************************************
  * Logging
@@ -25,21 +28,78 @@ var client = loggly.createClient({
   json:true
 });
 
+const log = (string, data = {}) => {
+  string ? data.message = string : '';
+  client.log(data);
+  console.log(data);
+}
+
+const logRequest = (string, data = {}) => {
+  data.request = string;
+}
+
+/**************************************
+ * State
+  *************************************/
+let color = 'green';
+let mode = 'MDT';
+
 /**************************************
  * Server!
   *************************************/
 
 const port = 8081;
-const server = app.listen(port, () => {
-  client.log('server online!');
+const _server = app.listen(port, () => {
+  log('server online!');
+  log('port 8081');
 });
 
 app.get('/time', (request, response) => {
-  response.send('time');  
+  logRequest('/time');
+  const date = new Date();
+  let value = undefined;
+  value = date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds();
+  log('Server side Date() is ' + date);
+  log('Server side time is ' + value);
+  response.send(value); 
 });
 
+var _ws = undefined;
 app.post('/change_color', (request, response) => {
+  logRequest('/change_color');
+  color === 'green' ? color = 'red' : color = 'green';
+  log('Changing color to ' + color);
+  response.send('ok'); 
+  // websocket push color change
+  _ws.send('{"color":"' + color + '"}');
 });
 
 app.post('/toggle_mode', (request, response) => {
+  logRequest('/toggle_mode');
+  log('Changing timezone to ' + mode);
+  response.send('ok'); 
+  // websocket push mode_change
+  _ws.send('{"mode":"' + mode + '"}');
+});
+
+/**************************************
+ * WebSocketServer!
+  *************************************/
+var WebSocketServer = ws.Server;
+var _wss = new WebSocketServer({ server : _server })
+
+_wss.on('connection', function connection(socket) {
+  _ws = socket;
+  _ws.on('message', function incoming(message) {
+    log('WebSocket server received message');
+    log(message);
+  });
+  _ws.on('data', function(data) {
+    log('WebSocket server got data!');
+    log(data);
+  });
+  _ws.on('close', function() {
+    log('WebSocket server closed!');
+  });
+  console.log('WebSocket server closed!');
 });
