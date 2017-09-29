@@ -92,7 +92,7 @@ _wss.on('connection', function connection(socket) {
   _ws = socket;
   _ws.on('message', function incoming(message) {
     log('WebSocket server received message');
-    log(message);
+    log(JSON.stringify(message));
   });
   _ws.on('data', function(data) {
     log('WebSocket server got data!');

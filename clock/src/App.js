@@ -6,8 +6,21 @@ const NGROK_BASE = '5a3bfd58.ngrok.io';
 const NGROK = 'http://' + NGROK_BASE;
 const NGROK_WS = 'ws://' + NGROK_BASE;
 
+const logVals = {
+  'logglyKey': 'a8581f69-9107-4b45-b88d-c5ae1e935974',
+  'sendConsoleErrors' : true,
+  'tag' : 'log-all-things-clock' ,
+  'subdomain' : 'logallthings'
+}
+const logger = {
+  log: (message) => {
+    axios.get('http://logs-01.loggly.com/inputs/' + logVals.logglyKey + '.gif?message=' + message + '&tag=' + logVals.tag);
+  }
+};
+
 const log = (string) => {
   console.log(string);
+  logger.log(string);
 }
 
 const logRequest = (string, response) => {
@@ -37,11 +50,12 @@ class Time extends React.Component {
         logRequest(NGROK + '/time response', response);
         timewarp = 0;
         this.setState({time: response.data});
-        client.send({message:"keepalive"});
+        const keepalive = {message:'keepalive'};
+        log('Sending server websocket keepalive ' + keepalive);
+        client.send(keepalive);
       });
     },10000);
     let secondInterval = setInterval(() => {
-      console.log(timewarp);
       let newTime = this.state.time.split(':');
       newTime[2] ++;
       newTime[0] = parseInt(newTime[0]) + timewarp;
@@ -52,6 +66,7 @@ class Time extends React.Component {
       log('Websocket error');
     }
     client.onclose = function() {
+      let client = new WebSocket(NGROK_WS);
       log('Websocket closed');
     }
     client.onopen= function() {
